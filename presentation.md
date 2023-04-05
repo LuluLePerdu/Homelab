@@ -1,8 +1,0 @@
-## Hardware
-
-
-## OS
-
-## Services
-
-## Conclusion
