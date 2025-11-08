@@ -1,0 +1,97 @@
+
+graph TB
+    Internet[Internet] --> CF[Cloudflare DNS Tunnel]
+    
+    CF -.Tunnel HTTPS.-> GW
+    
+    Internet --> BoxFAI[Box FAI<br/>LAN_GATEWAY]
+    
+    BoxFAI -->|Port Ethernet| Switch[Switch TL-SG105<br/>5 ports]
+    
+    Switch -->|Port 1| ProxmoxNIC[Proxmox NIC]
+    Switch -->|Port 2| FutureAP[AP WiFi Futur]
+    Switch -->|Port 3| PC[PC Cable<br/>LAN_CLIENTS]
+    
+    subgraph Proxmox[Proxmox VE Host]
+        
+        subgraph VM100[VM-100 OPNsense]
+            OPN[OPNsense<br/>4GB RAM 2vCPU]
+            IF_WAN[vtnet0 WAN<br/>WAN_ROUTER_IP]
+            IF_V20[vtnet1 V20<br/>VLAN20_GW]
+            IF_V30[vtnet2 V30<br/>VLAN30_GW]
+            IF_V40[vtnet3 V40<br/>VLAN40_GW]
+            IF_V50[vtnet4 V50<br/>VLAN50_GW]
+            IF_V99[vtnet5 V99<br/>VLAN99_GW]
+            IF_USER[vtnet6 Users<br/>USERS_NET_GATEWAY]
+        end
+        
+        subgraph V20[VLAN 20 Services Publics]
+            LXC200[LXC-200 Gateway<br/>VLAN20_IP_1<br/>2GB RAM]
+            LXC210[LXC-210 Nextcloud<br/>VLAN20_IP_2<br/>4GB RAM]
+            LXC220[LXC-220 Vaultwarden<br/>VLAN20_IP_3<br/>2GB RAM]
+        end
+        
+        subgraph V30[VLAN 30 Services Prives]
+            LXC300[LXC-300 Jellyfin<br/>VLAN30_IP_1<br/>4GB RAM]
+            LXC310[LXC-310 Home Assistant<br/>VLAN30_IP_2<br/>2GB RAM]
+            LXC320[LXC-320 Photoprism<br/>VLAN30_IP_3<br/>4GB RAM]
+        end
+        
+        subgraph V40[VLAN 40 Infrastructure]
+            LXC400[LXC-400 Pi-hole<br/>VLAN40_IP_1<br/>1GB RAM]
+            LXC410[LXC-410 Portainer<br/>VLAN40_IP_2<br/>1GB RAM]
+            LXC420[LXC-420 Uptime Kuma<br/>VLAN40_IP_3<br/>1GB RAM]
+            LXC430[LXC-430 Grafana<br/>VLAN40_IP_4<br/>2GB RAM]
+            LXC440[LXC-440 Prometheus<br/>VLAN40_IP_5<br/>2GB RAM]
+        end
+        
+        subgraph V50[VLAN 50 Databases]
+            LXC500[LXC-500 MariaDB<br/>VLAN50_IP_1<br/>4GB RAM]
+            LXC510[LXC-510 PostgreSQL<br/>VLAN50_IP_2<br/>4GB RAM]
+            LXC520[LXC-520 Redis<br/>VLAN50_IP_3<br/>2GB RAM]
+        end
+        
+        subgraph V99[VLAN 99 Management]
+            PVE_IF[Proxmox Web UI<br/>PVE_MGMT_IP:8006]
+            VM900[VM-900 Backup<br/>10.99.0.20<br/>4GB RAM]
+        end
+        
+        subgraph VUser[VLAN Users]
+            UserDev[Appareils<br/>USERS_NET]
+        end
+    end
+    
+    CF --> LXC200
+    
+    LXC200 -->|Traefik| LXC210
+    LXC200 -->|Traefik| LXC220
+    LXC200 -->|Traefik| LXC300
+    LXC200 -->|Traefik| LXC310
+    
+    LXC210 -.MySQL.-> LXC500
+    LXC210 -.Redis.-> LXC520
+    LXC220 -.PostgreSQL.-> LXC510
+    LXC300 -.PostgreSQL.-> LXC510
+    
+    UserDev -.DNS.-> LXC400
+    V20 -.DNS.-> LXC400
+    V30 -.DNS.-> LXC400
+    
+    LXC420 -.Monitor.-> LXC200
+    LXC420 -.Monitor.-> LXC210
+    LXC420 -.Monitor.-> LXC300
+    
+    LXC440 -.Metrics.-> OPN
+    LXC440 -.Metrics.-> LXC200
+    LXC440 -.Metrics.-> PVE_IF
+    
+    LXC430 -.Query.-> LXC440
+    
+    style V20 fill:#ffcccc
+    style V30 fill:#ccffcc
+    style V40 fill:#ccccff
+    style V50 fill:#ffccff
+    style V99 fill:#e6e6e6
+    style VUser fill:#ffffcc
+    style VM100 fill:#ff9999
+
